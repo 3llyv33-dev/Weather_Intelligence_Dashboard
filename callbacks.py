@@ -527,7 +527,7 @@ def register_callbacks(app):
                 except Exception:
                     pass
 
-        drift = (n_intervals or 0) * 0.68
+        drift = (n_intervals or 0) * 3.68
         state["lon"] = state["target_lon"] + drift
 
         fig = build_globe_figure(
