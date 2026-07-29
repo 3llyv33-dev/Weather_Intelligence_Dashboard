@@ -537,7 +537,7 @@ def register_callbacks(app):
         return fig, state
 
     @app.callback(
-        Output("city-select-dropdown", "value"),
+        Output("city-select-dropdown", "value", allow_duplicate=True),
         Input("hero-globe", "clickData"),
         Input("geo-store", "data"),
         prevent_initial_call=True,
