@@ -584,8 +584,14 @@ def register_callbacks(app):
 
 def _time_greeting() -> str:
     hour = datetime.now().hour
+    if hour < 6:
+        return "Good Midnight"
     if hour < 12:
         return "Good Morning"
+    if hour < 14:
+        return "Good Noon"
     if hour < 18:
         return "Good Afternoon"
-    return "Good Evening"
+    if hour < 21:
+        return "Good Evening"
+    return "Good Night"

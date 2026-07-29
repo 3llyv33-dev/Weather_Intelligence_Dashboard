@@ -1,3 +1,4 @@
+import math
 import random
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -128,8 +129,6 @@ def _group_forecast_by_day(entries: list) -> list:
             "wind_speed": round(mid_block["wind"]["speed"] * 3.6, 1),
             "condition": mid_block["weather"][0]["main"],
             "humidity": mid_block["main"]["humidity"],
-            "sunrise": "06:22",
-            "sunset": "18:24",
         })
     return result
 
@@ -143,6 +142,29 @@ def _city_seed(city: str) -> int:
     return sum(ord(c) for c in city.lower())
 
 
+def _mock_country(city: str) -> str:
+    for loc in POPULAR_LOCATIONS:
+        if loc["name"].lower() == city.lower():
+            return loc["country"]
+    return "TZ"
+
+
+def _mock_sunrise_sunset(city: str, date: datetime = None) -> tuple:
+    if date is None:
+        date = datetime.now()
+    rnd = random.Random(_city_seed(city) + date.timetuple().tm_yday)
+    lat = next((loc["lat"] for loc in POPULAR_LOCATIONS if loc["name"].lower() == city.lower()), -6.0)
+    eq_offset = abs(lat) / 90 * 1.5
+    season_shift = math.sin(2 * math.pi * (date.timetuple().tm_yday - 81) / 365) * 0.5
+    sunrise = 5.8 + eq_offset - season_shift
+    sunset = 18.2 - eq_offset + season_shift
+    sunrise_h = int(sunrise)
+    sunrise_m = int((sunrise - sunrise_h) * 60)
+    sunset_h = int(sunset)
+    sunset_m = int((sunset - sunset_h) * 60)
+    return f"{sunrise_h:02d}:{sunrise_m:02d}", f"{sunset_h:02d}:{sunset_m:02d}"
+
+
 def _mock_current(city: str) -> dict:
     rnd = random.Random(_city_seed(city) + datetime.now().hour)
     base_temp = 24 + (rnd.random() * 8)
@@ -152,9 +174,10 @@ def _mock_current(city: str) -> dict:
         rainfall = round(rnd.uniform(6, 15), 1)
     elif condition == "Rainy":
         rainfall = round(rnd.uniform(1, 8), 1)
+    sunrise, sunset = _mock_sunrise_sunset(city)
     return {
         "city": city,
-        "country": "TZ",
+        "country": _mock_country(city),
         "temperature": round(base_temp, 1),
         "feels_like": round(base_temp + rnd.uniform(1, 3), 1),
         "humidity": rnd.randint(50, 80),
@@ -165,8 +188,8 @@ def _mock_current(city: str) -> dict:
         "cloud_cover": rnd.randint(10, 80),
         "condition": condition,
         "rainfall_mm": rainfall,
-        "sunrise": "06:22",
-        "sunset": "18:24",
+        "sunrise": sunrise,
+        "sunset": sunset,
     }
 
 
@@ -178,6 +201,7 @@ def _mock_forecast(city: str, days: int = 7) -> list:
         date = today + timedelta(days=i)
         high = round(26 + rnd.uniform(0, 6))
         low = round(high - rnd.uniform(4, 8))
+        sunrise, sunset = _mock_sunrise_sunset(city, date)
         forecast.append({
             "day": "Today" if i == 0 else date.strftime("%a"),
             "date": date.strftime("%d %b"),
@@ -187,8 +211,8 @@ def _mock_forecast(city: str, days: int = 7) -> list:
             "wind_speed": round(rnd.uniform(8, 22), 1),
             "condition": rnd.choice(CONDITIONS),
             "humidity": rnd.randint(50, 85),
-            "sunrise": "06:22",
-            "sunset": "18:24",
+            "sunrise": sunrise,
+            "sunset": sunset,
         })
     return forecast
 
