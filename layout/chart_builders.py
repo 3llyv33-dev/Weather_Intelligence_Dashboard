@@ -4,6 +4,25 @@ import plotly.graph_objects as go
 
 from config import COLORS, FONT_FAMILY, WEATHER_SCORE_TIERS
 
+_ISO_2_TO_3 = {
+    "TZ": "TZA", "KE": "KEN", "UG": "UGA", "RW": "RWA", "BI": "BDI",
+    "CD": "COD", "ZM": "ZMB", "MW": "MWI", "MZ": "MOZ", "ZA": "ZAF",
+    "NG": "NGA", "GH": "GHA", "US": "USA", "GB": "GBR", "DE": "DEU",
+    "FR": "FRA", "IT": "ITA", "ES": "ESP", "PT": "PRT", "NL": "NLD",
+    "BE": "BEL", "CH": "CHE", "AT": "AUT", "SE": "SWE", "NO": "NOR",
+    "DK": "DNK", "FI": "FIN", "PL": "POL", "CZ": "CZE", "SK": "SVK",
+    "HU": "HUN", "RO": "ROU", "BG": "BGR", "GR": "GRC", "TR": "TUR",
+    "RU": "RUS", "CN": "CHN", "JP": "JPN", "KR": "KOR", "IN": "IND",
+    "AU": "AUS", "NZ": "NZL", "CA": "CAN", "MX": "MEX", "BR": "BRA",
+    "AR": "ARG", "CL": "CHL", "CO": "COL", "PE": "PER", "EG": "EGY",
+    "MA": "MAR", "DZ": "DZA", "TN": "TUN", "LY": "LBY", "SD": "SDN",
+    "ET": "ETH", "SO": "SOM", "AO": "AGO", "CM": "CMR", "CI": "CIV",
+    "SN": "SEN", "ML": "MLI", "BF": "BFA", "NE": "NER", "TD": "TCD",
+    "GA": "GAB", "CG": "COG", "SL": "SLE", "LR": "LBR", "MG": "MDG",
+    "BW": "BWA", "NA": "NAM", "SZ": "SWZ", "LS": "LSO", "ZW": "ZWE",
+    "SZ": "SWZ", "KE": "KEN",
+}
+
 
 def _base_layout(fig, height=260):
     fig.update_layout(
@@ -191,7 +210,8 @@ def build_air_quality_gauge(aqi: int, status: str) -> go.Figure:
 
 def build_globe_figure(rotation_lon: float, rotation_lat: float,
                        scale: float, cities: list,
-                       active_city: str = None) -> go.Figure:
+                       active_city: str = None,
+                       country_code: str = None) -> go.Figure:
     fig = go.Figure()
 
     lons = [c["lon"] for c in cities]
@@ -200,7 +220,23 @@ def build_globe_figure(rotation_lon: float, rotation_lat: float,
 
     city_color = "rgba(56, 189, 248, 0.7)"
     active_color = COLORS["warning"]
+    area_color = "rgba(245, 158, 11, 0.12)"
 
+    # Country highlight (choropleth)
+    if country_code:
+        iso3 = _ISO_2_TO_3.get(country_code.upper())
+        if iso3:
+            fig.add_trace(go.Choropleth(
+                locations=[iso3],
+                z=[1],
+                locationmode="ISO-3",
+                colorscale=[[0, area_color], [1, area_color]],
+                showscale=False,
+                hoverinfo="skip",
+                showlegend=False,
+            ))
+
+    # City markers
     fig.add_trace(go.Scattergeo(
         lon=lons, lat=lats,
         mode="markers",
@@ -214,21 +250,21 @@ def build_globe_figure(rotation_lon: float, rotation_lat: float,
         match = next((c for c in cities if c["name"] == active_city), None)
         if match:
             alat, alon = match["lat"], match["lon"]
-            # Outer glow ring
+            # Outer glow — area zone
+            fig.add_trace(go.Scattergeo(
+                lon=[alon], lat=[alat],
+                mode="markers",
+                marker=dict(size=120, color=active_color,
+                            opacity=0.06, symbol="circle",
+                            line=dict(width=0)),
+                showlegend=False, hoverinfo="skip",
+            ))
+            # Mid glow
             fig.add_trace(go.Scattergeo(
                 lon=[alon], lat=[alat],
                 mode="markers",
                 marker=dict(size=60, color=active_color,
-                            opacity=0.08, symbol="circle",
-                            line=dict(width=0)),
-                showlegend=False, hoverinfo="skip",
-            ))
-            # Mid glow ring
-            fig.add_trace(go.Scattergeo(
-                lon=[alon], lat=[alat],
-                mode="markers",
-                marker=dict(size=36, color=active_color,
-                            opacity=0.18, symbol="circle",
+                            opacity=0.12, symbol="circle",
                             line=dict(width=0)),
                 showlegend=False, hoverinfo="skip",
             ))
@@ -236,8 +272,8 @@ def build_globe_figure(rotation_lon: float, rotation_lat: float,
             fig.add_trace(go.Scattergeo(
                 lon=[alon], lat=[alat],
                 mode="markers",
-                marker=dict(size=20, color=active_color,
-                            opacity=0.4, symbol="circle",
+                marker=dict(size=24, color=active_color,
+                            opacity=0.35, symbol="circle",
                             line=dict(width=0)),
                 showlegend=False, hoverinfo="skip",
             ))
@@ -245,11 +281,11 @@ def build_globe_figure(rotation_lon: float, rotation_lat: float,
             fig.add_trace(go.Scattergeo(
                 lon=[alon], lat=[alat],
                 mode="markers",
-                marker=dict(size=10, color="#ffffff",
-                            line=dict(width=2, color=active_color)),
+                marker=dict(size=12, color="#ffffff",
+                            line=dict(width=2.5, color=active_color)),
                 showlegend=False, hoverinfo="skip",
             ))
-            # City name label next to the active dot
+            # City name label
             fig.add_trace(go.Scattergeo(
                 lon=[alon + 2.5], lat=[alat + 1.5],
                 mode="text",
@@ -268,7 +304,9 @@ def build_globe_figure(rotation_lon: float, rotation_lat: float,
             ),
             showland=True, landcolor=COLORS["secondary"],
             showocean=True, oceancolor=COLORS["primary"],
-            showcountries=False,
+            showcountries=True,
+            countrycolor="rgba(255,255,255,0.2)",
+            countrywidth=0.5,
             coastlinecolor=COLORS["accent"], coastlinewidth=0.6,
             showframe=False,
             showlakes=False,

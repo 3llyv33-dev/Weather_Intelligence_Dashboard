@@ -530,9 +530,12 @@ def register_callbacks(app):
         drift = (n_intervals or 0) * 7.68
         state["lon"] = state["target_lon"] + drift
 
+        country_code = data["current"].get("country") if data else None
+
         fig = build_globe_figure(
             state["lon"], state["lat"],
             state["scale"], POPULAR_LOCATIONS, active_city,
+            country_code=country_code,
         )
         return fig, state
 
