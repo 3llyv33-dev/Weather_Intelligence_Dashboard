@@ -1,6 +1,5 @@
 import json
 import os
-import random
 from datetime import datetime, timedelta
 
 HISTORY_DIR = os.path.join(os.path.dirname(__file__), "history")
@@ -53,9 +52,6 @@ def get_trend_series(city: str, days: int) -> list:
     records_by_date = {r["date"]: r for r in records}
 
     today = datetime.now()
-    rnd = random.Random(sum(ord(c) for c in city.lower()))
-    base_temp = records[-1]["temperature"] if records else 26.0
-
     series = []
     for i in range(days - 1, -1, -1):
         date = today - timedelta(days=i)
@@ -71,17 +67,5 @@ def get_trend_series(city: str, days: int) -> list:
                 "rainfall_mm": r["rainfall_mm"],
                 "condition": r["condition"],
                 "is_logged": True,
-            })
-        else:
-            drift = rnd.uniform(-2.5, 2.5)
-            series.append({
-                "date": date_str,
-                "label": date.strftime("%a"),
-                "temperature": round(base_temp + drift, 1),
-                "humidity": rnd.randint(55, 80),
-                "wind_speed": round(rnd.uniform(8, 22), 1),
-                "rainfall_mm": round(max(0, rnd.uniform(-3, 8)), 1),
-                "condition": rnd.choice(["Sunny", "Cloudy", "Rainy", "Thunderstorm"]),
-                "is_logged": False,
             })
     return series

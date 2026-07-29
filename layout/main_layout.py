@@ -24,6 +24,7 @@ def build_main_layout():
             dcc.Store(id="fetch-error-store"),
             dcc.Store(id="nav-active-store"),
             dcc.Store(id="globe-state-store"),
+            dcc.Store(id="geo-store"),
 
             dcc.Location(id="url", refresh=False),
 

@@ -38,7 +38,7 @@ def build_charts_section():
                         className="chart-card-header",
                         children=[
                             html.Span("RAINFALL (mm)", className="chart-title"),
-                            html.Span("Selected range", className="chart-subtitle"),
+                            html.Span(id="rainfall-subtitle", className="chart-subtitle"),
                         ],
                     ),
                     dcc.Graph(id="rainfall-chart", config={"displayModeBar": False}),
@@ -51,7 +51,7 @@ def build_charts_section():
                         className="chart-card-header",
                         children=[
                             html.Span("WEATHER CONDITION DISTRIBUTION", className="chart-title"),
-                            html.Span("Selected range", className="chart-subtitle"),
+                            html.Span(id="condition-subtitle", className="chart-subtitle"),
                         ],
                     ),
                     dcc.Graph(id="condition-distribution-chart", config={"displayModeBar": False}),

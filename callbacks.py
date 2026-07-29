@@ -31,10 +31,14 @@ def _city_coords_global(city_name):
     for loc in POPULAR_LOCATIONS:
         if loc["name"].lower() == city_name.lower():
             return loc["lat"], loc["lon"]
-    try:
-        return weather_api.geocode_city(city_name)
-    except Exception:
-        return -6.0, 35.0
+    return weather_api.geocode_city(city_name)
+
+
+def _default_city_coords():
+    for loc in POPULAR_LOCATIONS:
+        if loc["name"] == DEFAULT_CITY:
+            return loc["lat"], loc["lon"]
+    return 35.0, -6.0
 
 
 def register_callbacks(app):
@@ -68,8 +72,6 @@ def register_callbacks(app):
             city = search_value.strip()
         elif triggered == "city-select-dropdown" and dropdown_city:
             city = dropdown_city
-        elif triggered == "btn-current-location":
-            city = DEFAULT_CITY
 
         trend_days_int = int(trend_days) if trend_days else 7
 
@@ -176,6 +178,8 @@ def register_callbacks(app):
         Output("temperature-trend-chart", "figure"),
         Output("rainfall-chart", "figure"),
         Output("condition-distribution-chart", "figure"),
+        Output("rainfall-subtitle", "children"),
+        Output("condition-subtitle", "children"),
         Input("dashboard-data-store", "data"),
         Input("unit-store", "data"),
     )
@@ -184,10 +188,18 @@ def register_callbacks(app):
             raise PreventUpdate
         trend = data["trend_series"]
         stats = data["statistics"]
+        if len(trend) >= 2:
+            date_range = f"{trend[0]['date']} \u2014 {trend[-1]['date']}"
+        elif len(trend) == 1:
+            date_range = trend[0]["date"]
+        else:
+            date_range = "No data"
         return (
             build_temperature_trend_figure(trend, unit),
             build_rainfall_figure(trend),
             build_condition_distribution_figure(stats["condition_distribution"], days=len(trend)),
+            date_range,
+            date_range,
         )
 
     @app.callback(
@@ -218,12 +230,15 @@ def register_callbacks(app):
 
     @app.callback(
         Output("forecast-cards-row", "children"),
+        Output("forecast-section-title", "children"),
         Input("dashboard-data-store", "data"),
         Input("unit-store", "data"),
     )
     def render_forecast_cards(data, unit):
         if not data:
             raise PreventUpdate
+        count = len(data["forecast"])
+        title = f"{count}-DAY FORECAST" if count > 1 else "FORECAST"
         cards = []
         for i, day in enumerate(data["forecast"]):
             is_today = day["day"] == "Today"
@@ -250,7 +265,7 @@ def register_callbacks(app):
                     ],
                 )
             )
-        return cards
+        return cards, title
 
     @app.callback(
         Output("forecast-detail-modal", "is_open"),
@@ -490,9 +505,10 @@ def register_callbacks(app):
     )
     def update_globe(n_intervals, data, state):
         if not state or state.get("init") is None:
+            dlat, dlon = _default_city_coords()
             state = {
-                "lon": 35.0, "lat": -6.0, "scale": 1.0,
-                "target_lon": 35.0, "target_lat": -6.0,
+                "lon": dlon, "lat": dlat, "scale": 1.0,
+                "target_lon": dlon, "target_lat": dlat,
                 "init": True,
             }
 
@@ -502,11 +518,14 @@ def register_callbacks(app):
             triggered = ctx.triggered_id
 
             if triggered == "dashboard-data-store":
-                lat, lon = _city_coords_global(active_city)
-                state["target_lon"] = lon
-                state["target_lat"] = lat
-                state["lon"] = lon
-                state["lat"] = lat
+                try:
+                    lat, lon = _city_coords_global(active_city)
+                    state["target_lon"] = lon
+                    state["target_lat"] = lat
+                    state["lon"] = lon
+                    state["lat"] = lat
+                except Exception:
+                    pass
 
         drift = (n_intervals or 0) * 0.68
         state["lon"] = state["target_lon"] + drift
@@ -580,6 +599,44 @@ def register_callbacks(app):
         Input("btn-export", "n_clicks"),
         prevent_initial_call=True,
     )
+
+    app.clientside_callback(
+        """
+        function(n) {
+            if (!n) return window.dash_clientside.no_update;
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    var data = {
+                        lat: pos.coords.latitude.toFixed(4),
+                        lon: pos.coords.longitude.toFixed(4),
+                    };
+                    dash_clientside.set_props('geo-store', {data: data});
+                },
+                function(err) {
+                    console.warn('Geolocation error:', err.message);
+                }
+            );
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output("btn-current-location", "title"),
+        Input("btn-current-location", "n_clicks"),
+        prevent_initial_call=True,
+    )
+
+    @app.callback(
+        Output("city-select-dropdown", "value"),
+        Input("geo-store", "data"),
+        prevent_initial_call=True,
+    )
+    def geo_to_city(geo_data):
+        if not geo_data:
+            raise PreventUpdate
+        try:
+            city = weather_api.reverse_geocode(float(geo_data["lat"]), float(geo_data["lon"]))
+            return city
+        except Exception:
+            raise PreventUpdate
 
 
 def _time_greeting() -> str:

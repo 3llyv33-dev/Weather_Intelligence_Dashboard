@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import requests
 
-from config import OPENWEATHERMAP_API_KEY, USE_MOCK_DATA, POPULAR_LOCATIONS
+from config import DEFAULT_CITY, OPENWEATHERMAP_API_KEY, USE_MOCK_DATA, POPULAR_LOCATIONS
 
 CURRENT_URL = "https://api.openweathermap.org/data/2.5/weather"
 FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
@@ -88,6 +88,24 @@ def fetch_air_quality(lat: float, lon: float) -> dict:
         }
     except (requests.RequestException, KeyError, ValueError, IndexError) as exc:
         raise WeatherAPIError(f"Could not fetch air quality: {exc}") from exc
+
+
+def reverse_geocode(lat: float, lon: float) -> str:
+    for loc in POPULAR_LOCATIONS:
+        if abs(loc["lat"] - lat) < 0.5 and abs(loc["lon"] - lon) < 0.5:
+            return loc["name"]
+    if USE_MOCK_DATA:
+        return POPULAR_LOCATIONS[0]["name"] if POPULAR_LOCATIONS else DEFAULT_CITY
+    try:
+        resp = requests.get(
+            f"https://api.openweathermap.org/data/2.5/weather",
+            params={"lat": lat, "lon": lon, "appid": OPENWEATHERMAP_API_KEY, "units": "metric"},
+            timeout=6,
+        )
+        resp.raise_for_status()
+        return resp.json()["name"]
+    except (requests.RequestException, KeyError, ValueError) as exc:
+        raise WeatherAPIError(f"Could not reverse geocode ({lat}, {lon}): {exc}") from exc
 
 
 def geocode_city(city: str):

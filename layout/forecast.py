@@ -9,7 +9,7 @@ def build_forecast_section():
         children=[
             html.Div(
                 className="section-header",
-                children=[html.Span("7-DAY FORECAST", className="section-title")],
+                children=[html.Span("FORECAST", id="forecast-section-title", className="section-title")],
             ),
             html.Div(id="forecast-cards-row", className="forecast-cards-row"),
             dbc.Modal(

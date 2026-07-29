@@ -101,7 +101,7 @@ def build_header():
                         title="Toggle dark mode",
                     ),
                     html.Div(id="header-clock", className="header-clock"),
-                    html.Div("AD", className="user-avatar"),
+                    html.Div(html.I(className="bi bi-person-circle"), className="user-avatar"),
                 ],
             ),
             dcc.Interval(id="clock-interval", interval=1000, n_intervals=0),
