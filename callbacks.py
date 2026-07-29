@@ -528,7 +528,7 @@ def register_callbacks(app):
                     pass
 
         drift = (n_intervals or 0) * 7.68
-        state["lon"] = state["target_lon"] + drift
+        state["lon"] = (state["target_lon"] + drift) % 360
 
         country_code = data["current"].get("country") if data else None
 
