@@ -214,13 +214,7 @@ def build_globe_figure(rotation_lon: float, rotation_lat: float,
                        country_code: str = None) -> go.Figure:
     fig = go.Figure()
 
-    lons = [c["lon"] for c in cities]
-    lats = [c["lat"] for c in cities]
-    names = [c["name"] for c in cities]
-
-    city_color = "rgba(56, 189, 248, 0.7)"
     active_color = COLORS["warning"]
-    area_color = "rgba(245, 158, 11, 0.12)"
 
     # Country highlight (choropleth)
     if country_code:
@@ -230,21 +224,11 @@ def build_globe_figure(rotation_lon: float, rotation_lat: float,
                 locations=[iso3],
                 z=[1],
                 locationmode="ISO-3",
-                colorscale=[[0, area_color], [1, area_color]],
+                colorscale=[[0, "rgba(245, 158, 11, 0.35)"], [1, "rgba(245, 158, 11, 0.35)"]],
                 showscale=False,
                 hoverinfo="skip",
                 showlegend=False,
             ))
-
-    # City markers
-    fig.add_trace(go.Scattergeo(
-        lon=lons, lat=lats,
-        mode="markers",
-        marker=dict(size=8, color=city_color,
-                    line=dict(width=1, color="white")),
-        text=names, hoverinfo="text",
-        showlegend=False,
-    ))
 
     if active_city:
         match = next((c for c in cities if c["name"] == active_city), None)
