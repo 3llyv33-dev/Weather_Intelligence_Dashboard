@@ -489,63 +489,27 @@ def register_callbacks(app):
         prevent_initial_call=False,
     )
     def update_globe(n_intervals, data, state):
-        APPROACH_STEPS = 10
-        ZOOM_STEPS = 8
-
         if not state or state.get("init") is None:
-            lat, lon = _city_coords_global(data["current"]["city"] if data else DEFAULT_CITY)
-            state = {"lon": lon, "lat": lat, "scale": 1.0,
-                     "anim_step": -1, "prev_city": "",
-                     "default_lat": -6.0, "default_lon": 35.0,
-                     "init": True}
+            state = {
+                "lon": 35.0, "lat": -6.0, "scale": 1.0,
+                "target_lon": 35.0, "target_lat": -6.0,
+                "init": True,
+            }
 
         active_city = DEFAULT_CITY
         if data:
             active_city = data["current"]["city"]
             triggered = ctx.triggered_id
 
-            if triggered == "dashboard-data-store" and active_city != state.get("prev_city"):
-                clat, clon = _city_coords_global(active_city)
-                state.update(prev_city=active_city,
-                             start_lon=state.get("target_lon", state["lon"]),
-                             start_lat=state.get("target_lat", state["lat"]),
-                             target_lon=clon, target_lat=clat,
-                             anim_step=0, phase="approach")
+            if triggered == "dashboard-data-store":
+                lat, lon = _city_coords_global(active_city)
+                state["target_lon"] = lon
+                state["target_lat"] = lat
+                state["lon"] = lon
+                state["lat"] = lat
 
-        if state.get("anim_step", -1) >= 0 and state.get("phase") == "approach":
-            step = state["anim_step"]
-            t = min(step / APPROACH_STEPS, 1.0)
-            t_smooth = t * t * (3 - 2 * t)
-            state["lon"] = state["start_lon"] + (state["target_lon"] - state["start_lon"]) * t_smooth
-            state["lat"] = state["start_lat"] + (state["target_lat"] - state["start_lat"]) * t_smooth
-            if t >= 1.0:
-                state["phase"] = "zoom"
-                state["anim_step"] = 0
-                state["lon"] = state["target_lon"]
-                state["lat"] = state["target_lat"]
-            else:
-                state["anim_step"] = step + 1
-
-        elif state.get("anim_step", -1) >= 0 and state.get("phase") == "zoom":
-            step = state["anim_step"]
-            t = min(step / ZOOM_STEPS, 1.0)
-            state["scale"] = 1.0 + 1.4 * t
-            if t >= 1.0:
-                state["phase"] = "orbit"
-                state["anim_step"] = -1
-                state["scale"] = 2.4
-            else:
-                state["anim_step"] = step + 1
-
-        elif state.get("phase") == "orbit":
-            drift = (n_intervals or 0) * 0.18
-            state["lon"] = state["target_lon"] + drift
-            state["lat"] = state["target_lat"]
-
-        else:
-            drift = (n_intervals or 0) * 0.45
-            state["lon"] = state.get("default_lon", 0) + drift
-            state["lat"] = state.get("default_lat", 0)
+        drift = (n_intervals or 0) * 0.68
+        state["lon"] = state["target_lon"] + drift
 
         fig = build_globe_figure(
             state["lon"], state["lat"],
