@@ -539,14 +539,20 @@ def register_callbacks(app):
     @app.callback(
         Output("city-select-dropdown", "value"),
         Input("hero-globe", "clickData"),
+        Input("geo-store", "data"),
         prevent_initial_call=True,
     )
-    def globe_click_to_city(click_data):
-        if not click_data:
-            raise PreventUpdate
-        city = click_data["points"][0].get("text", "")
-        if city and any(c["name"] == city for c in POPULAR_LOCATIONS):
-            return city
+    def set_city_from_globe_or_geo(click_data, geo_data):
+        triggered = ctx.triggered_id
+        if triggered == "hero-globe" and click_data:
+            city = click_data["points"][0].get("text", "")
+            if city and any(c["name"] == city for c in POPULAR_LOCATIONS):
+                return city
+        elif triggered == "geo-store" and geo_data:
+            try:
+                return weather_api.reverse_geocode(float(geo_data["lat"]), float(geo_data["lon"]))
+            except Exception:
+                pass
         raise PreventUpdate
 
     @app.callback(
@@ -624,19 +630,7 @@ def register_callbacks(app):
         prevent_initial_call=True,
     )
 
-    @app.callback(
-        Output("city-select-dropdown", "value"),
-        Input("geo-store", "data"),
-        prevent_initial_call=True,
-    )
-    def geo_to_city(geo_data):
-        if not geo_data:
-            raise PreventUpdate
-        try:
-            city = weather_api.reverse_geocode(float(geo_data["lat"]), float(geo_data["lon"]))
-            return city
-        except Exception:
-            raise PreventUpdate
+
 
 
 def _time_greeting() -> str:
